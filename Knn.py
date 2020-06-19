@@ -50,35 +50,59 @@ def compute_err(k, dist_list, y_test):
     return err / rows
 
 
-def start_knn(x, y):
-    averages_manhattan = [0] * 5
-    averages_euclidaen = [0] * 5
-    averages_frechet = [0] * 5
+def print_results(averages, p):
+    print("------ [ P =", p, "] ------")
+    for i in range(len(averages)):
+        print("[ K = ", i * 2 + 1, "], [ Avg =", averages[i], "]")
+
+
+def find_best_results(results):
+    min_err = results[0][0]
+    r_c = [0, 0]
+
+    for i in range(len(results)):
+        for j in range(len(results[i])):
+            if results[i][j] < min_err:
+                r_c = [i, j]
+                min_err = results[i][j]
+
+    return r_c, min_err
+
+
+def start_knn(x, y, n):
+    tests = int(n / 2)
+    averages_manhattan = [0] * tests
+    averages_euclidean = [0] * tests
+    averages_frechet = [0] * tests
 
     repeats = 500
-    for r in range(500):
-        x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.5, random_state=42)
+    for r in range(repeats):
+        ratio = (r + 1) / repeats
+        print("\r[%-25s] %d%%" % ('=' * int(ratio * 25), ratio * 100), end='')
+        x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.5)
         manhattan_dist_list = calc_dist(x_train, y_train, x_test, lambda cord1, cord2: distance(cord1, cord2, 1))
-        euclidaen_dist_list = calc_dist(x_train, y_train, x_test, lambda cord1, cord2: distance(cord1, cord2, 2))
+        euclidean_dist_list = calc_dist(x_train, y_train, x_test, lambda cord1, cord2: distance(cord1, cord2, 2))
         frechet_dist_list = calc_dist(x_train, y_train, x_test, frechet_dist)
 
-        for k in range(1, 10, 2):
+        for k in range(1, n, 2):
             index = int(k / 2)
-            averages_manhattan[index] += compute_err(k, manhattan_dist_list, y_test) / repeats
-            averages_euclidaen[index] += compute_err(k, euclidaen_dist_list, y_test) / repeats
-            averages_frechet[index] += compute_err(k, frechet_dist_list, y_test) / repeats
+            averages_manhattan[index] += compute_err(k, manhattan_dist_list, y_test) / repeats  # p = 1
+            averages_euclidean[index] += compute_err(k, euclidean_dist_list, y_test) / repeats  # p = 2
+            averages_frechet[index] += compute_err(k, frechet_dist_list, y_test) / repeats      # p = inf
 
-    print(averages_manhattan)
-    print(averages_euclidaen)
-    print(averages_frechet)
+    dist_names = ["1", "2", "inf"]
+    print()
+    print("------ Averages results ------")
+    print_results(averages_manhattan, dist_names[0])
+    print_results(averages_euclidean, dist_names[1])
+    print_results(averages_frechet, dist_names[2])
+    r_c, min_err = find_best_results([averages_manhattan, averages_euclidean, averages_frechet])
+    print("------ Best result for this training ------")
+    print("[ P =", dist_names[r_c[0]], "], [ K = ", r_c[1] * 2 + 1, "], [ Avg =", min_err, "]")
 
 
 dataSet = pd.read_csv('HC_Body_Temperature', delim_whitespace=True, header=None)
 X = dataSet.iloc[:, [0, 2]].values
 Y = dataSet.iloc[:, 1].values
 
-start_knn(X, Y)
-
-d ={1:2, 2:4,5:6}
-
-t = max(d, key=d.get)
+start_knn(X, Y, 10)
